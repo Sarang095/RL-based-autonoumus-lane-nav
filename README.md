@@ -1,231 +1,181 @@
-# Webots Autonomous Driving Project
+# Webots Autonomous Driving Simulation
 
-A complete autonomous driving simulation project using Webots simulator with both Imitation Learning (IL) and Reinforcement Learning (RL) approaches. The agent learns to navigate complex scenarios including parking, roundabouts, and intersections using vision-based control.
+🚗 **A complete autonomous driving project ready for Webots!** 
 
-## Project Structure
+This project provides a comprehensive autonomous driving simulation environment with reinforcement learning, imitation learning, and data collection capabilities.
 
+## ✅ Project Status
+- **Dependencies**: ✅ All fixed (gym → gymnasium, opencv-python)
+- **Webots Integration**: ✅ Ready to run
+- **Controllers**: ✅ Working (agent + supervisor)
+- **Training Pipeline**: ✅ PPO with Stable-Baselines3
+- **Test Mode**: ✅ Runs without Webots for development
+
+## 🚀 Quick Start
+
+### Option 1: With Webots (Full Simulation)
+```bash
+# 1. Install Webots from https://cyberbotics.com/
+# 2. Run the launcher
+python3 launch_simulation.py
 ```
-webots-autonomous-driving/
-├── supervisor_controller.py    # Scenario management and simulation control
-├── agent_driver.py            # Agent controller for data collection and AI inference
-├── train_rl.py               # RL training script with PPO
-├── requirements.txt          # Python dependencies
-└── README.md                # This file
+
+### Option 2: Without Webots (Testing Mode)
+```bash
+# Test controllers without Webots
+python3 launch_simulation.py
+# Choose 'y' for standalone mode when prompted
 ```
 
-## Features
+## 📋 Requirements
 
-- **Multi-scenario training**: Parking, intersections, and roundabouts
-- **Vision-based control**: Front camera input with CNN processing
-- **Sensor fusion**: Camera, distance sensors, and inertial unit data
-- **Dual-mode operation**: Manual data collection and AI inference
-- **PPO reinforcement learning**: Using Stable-Baselines3
-- **Modular architecture**: Separate supervisor and agent controllers
-
-## Setup Instructions
-
-### 1. Install Dependencies
-
+### Python Dependencies (✅ Auto-installed)
 ```bash
 pip install -r requirements.txt
 ```
+- numpy, opencv-python, gymnasium
+- stable-baselines3, torch, matplotlib, tensorboard
 
-### 2. Webots World Configuration
+### Webots (Required for full simulation)
+- **Download**: https://cyberbotics.com/
+- **Versions**: R2023a, R2023b, R2024a+
+- **Platforms**: Windows, macOS, Linux
 
-Your Webots world file should include the following nodes with proper DEF names:
-
-**Robot Node (Agent Car):**
+## 📁 Project Structure
 ```
-DEF AGENT_CAR Robot {
-  # Your car model with the following devices:
-  # - Camera named "camera"
-  # - DistanceSensors: "front_sensor", "rear_sensor", "left_sensor", "right_sensor"
-  # - InertialUnit named "inertial_unit"
-  # - Motors: "wheel_left_motor", "wheel_right_motor", "steering_motor"
-  # - Keyboard for manual control
-}
-```
-
-**Traffic Light LEDs (optional):**
-```
-DEF TRAFFIC_LIGHT_1 LED { ... }
-DEF TRAFFIC_LIGHT_2 LED { ... }
-DEF TRAFFIC_LIGHT_3 LED { ... }
-```
-
-### 3. Controller Assignment
-
-In your Webots world:
-1. Assign `supervisor_controller.py` to a Supervisor node
-2. Assign `agent_driver.py` to the AGENT_CAR robot node
-
-## Usage
-
-### Phase 1: Data Collection (Imitation Learning)
-
-1. **Start Webots simulation** with your world file
-2. **Run the agent controller** - it will start in manual mode by default
-3. **Drive manually** using keyboard controls:
-   - W/S: Throttle forward/backward
-   - A/D: Steering left/right
-   - M: Toggle between manual and AI mode
-   - Q: Quit
-
-4. **Training data** will be automatically saved to `collected_data/` folder:
-   - `images/`: Camera images from each timestep
-   - `actions/`: Corresponding steering and throttle actions
-   - JSON files with sensor data and metadata
-
-### Phase 2: Reinforcement Learning Training
-
-1. **Configure the training environment** in `train_rl.py`:
-   ```python
-   env = WebotsCarEnv(
-       max_episode_steps=1000,
-       target_scenarios=['parking', 'intersection', 'roundabout']
-   )
-   ```
-
-2. **Start training**:
-   ```bash
-   python train_rl.py
-   ```
-
-3. **Monitor training progress**:
-   - Console output shows episode rewards and statistics
-   - TensorBoard logs are saved to `training_logs/`
-   - View with: `tensorboard --logdir training_logs`
-
-4. **Trained models** are saved to `training_logs/final_model.zip`
-
-### Phase 3: AI Inference
-
-1. **Load trained model** in `agent_driver.py`:
-   ```python
-   driver.load_ai_model("training_logs/final_model.zip")
-   ```
-
-2. **Switch to AI mode** by pressing 'M' during simulation
-
-3. **Watch the agent** navigate autonomously using the trained policy
-
-## Key Components
-
-### Supervisor Controller (`supervisor_controller.py`)
-
-- **Scenario Management**: Controls simulation state and environment elements
-- **Agent Reset**: Repositions car to starting location for new episodes
-- **Traffic Light Control**: Manages LED colors for intersection scenarios
-- **Communication**: Receives commands from training scripts
-
-Key methods:
-- `reset_agent_position()`: Reset car to initial state
-- `set_traffic_light_color()`: Control traffic lights
-- `process_commands()`: Handle external commands
-
-### Agent Driver (`agent_driver.py`)
-
-- **Sensor Integration**: Camera, distance sensors, inertial unit
-- **Manual Control**: Keyboard input for data collection
-- **AI Inference**: Trained model prediction and action execution
-- **Data Logging**: Automatic saving of training samples
-
-Key methods:
-- `get_sensor_data()`: Collect all sensor readings
-- `process_keyboard_input()`: Handle manual driving
-- `ai_inference()`: Get actions from trained model
-- `save_training_sample()`: Save IL training data
-
-### RL Training (`train_rl.py`)
-
-- **Custom Gym Environment**: Webots integration with OpenAI Gym
-- **PPO Training**: Using Stable-Baselines3 implementation
-- **Multi-scenario Support**: Random scenario selection per episode
-- **Reward Design**: Distance-based, collision avoidance, and efficiency rewards
-
-Key methods:
-- `WebotsCarEnv.step()`: Execute action and return observation
-- `WebotsCarEnv.reset()`: Start new episode with random scenario
-- `_calculate_reward()`: Compute reward based on performance
-
-## Reward Structure
-
-The RL agent is trained using a multi-component reward function:
-
-- **Distance Progress**: +10 × improvement toward target
-- **Target Reached**: +100 for successfully reaching goal
-- **Collision Penalty**: -50 for hitting obstacles
-- **Smooth Driving**: -0.1 × |steering_angle| for stable control
-- **Forward Motion**: +0.5 × throttle for progress
-- **Efficiency**: -0.01 per timestep to encourage speed
-
-## Customization
-
-### Adding New Scenarios
-
-1. **Define target positions** in `train_rl.py`:
-   ```python
-   self.scenario_targets = {
-       'new_scenario': {'target_pos': [x, y, z], 'tolerance': radius}
-   }
-   ```
-
-2. **Add scenario logic** in `_reset_webots_simulation()`
-
-3. **Update scenario list** when creating the environment
-
-### Modifying Network Architecture
-
-Edit the PPO model parameters in `train_rl.py`:
-```python
-model = PPO(
-    'MlpPolicy',  # or 'CnnPolicy' for image inputs
-    env,
-    learning_rate=3e-4,
-    # ... other parameters
-)
+webots_autonomous_driving/
+├── 🌍 worlds/
+│   ├── highway_drive.wbt      # Main simulation world
+│   └── autonomous_driving.wbt # Alternative world
+├── 🎮 controllers/
+│   ├── agent_driver/          # Car controller (AI + manual)
+│   └── supervisor_controller/ # Environment manager
+├── 📊 collected_data/         # Training data
+│   ├── images/               # Camera feeds
+│   ├── actions/              # Steering/throttle
+│   └── sensor_data/          # Distance sensors
+├── 🧠 training_logs/          # Models and logs
+├── 🚀 launch_simulation.py    # Main launcher
+├── 🤖 train_rl.py            # PPO training
+└── 📖 WEBOTS_INSTRUCTIONS.md  # Detailed setup guide
 ```
 
-### Adjusting Observation Space
+## 🎮 How to Use
 
-Modify `_get_obs()` in `WebotsCarEnv` to include additional sensors or change image processing.
+### 1. Manual Data Collection
+- Use **W/A/S/D** keys to drive
+- Data automatically saved for training
+- Press **M** to toggle AI/manual mode
 
-## Troubleshooting
+### 2. AI Training
+```bash
+# Train reinforcement learning model
+python3 train_rl.py
 
-### Common Issues
+# View training progress
+tensorboard --logdir training_logs
+```
 
-1. **"AGENT_CAR node not found"**: Ensure your robot is defined with `DEF AGENT_CAR` in the world file
+### 3. Autonomous Driving
+- Load trained model automatically
+- Switch to AI mode with **M** key
+- Watch the car drive itself!
 
-2. **Device not found warnings**: Check that sensor/motor names match those in your robot model
+## 🔧 Features
 
-3. **Training slow/unstable**: Adjust PPO hyperparameters or reward function weights
+### ✅ Reinforcement Learning
+- **Algorithm**: PPO (Proximal Policy Optimization)
+- **Framework**: Stable-Baselines3
+- **Environment**: Custom Gymnasium wrapper
+- **Observations**: Camera + sensors
+- **Actions**: Steering + throttle
 
-4. **Connection issues**: Verify Webots controllers are properly assigned and communication channels are set up
+### ✅ Imitation Learning
+- Manual driving data collection
+- Behavior cloning from human demonstrations
+- Real-time training data export
 
-### Performance Tips
+### ✅ Webots Integration
+- Professional physics simulation
+- Realistic car dynamics
+- Multiple world scenarios
+- Sensor simulation (camera, distance, IMU)
 
-- Use GPU acceleration for training: Install CUDA-compatible PyTorch
-- Reduce image resolution for faster processing
-- Adjust `max_episode_steps` based on scenario complexity
-- Monitor training with TensorBoard for hyperparameter tuning
+### ✅ Development-Friendly
+- **Test Mode**: Run without Webots installed
+- **Modular Design**: Easy to extend
+- **Error Handling**: Comprehensive dependency checking
+- **Documentation**: Step-by-step guides
 
-## Dependencies
+## 🔬 Testing Without Webots
 
-See `requirements.txt` for the complete list. Key dependencies:
-- **Webots**: R2023a or later (simulation environment)
-- **Stable-Baselines3**: RL algorithms implementation
-- **OpenCV**: Image processing
-- **NumPy**: Numerical computations
-- **PyTorch**: Deep learning backend
+Perfect for development and CI/CD:
 
-## License
+```bash
+# Test individual components
+cd controllers/agent_driver
+python3 agent_driver.py --test
 
-This project is provided as-is for educational and research purposes.
+cd ../supervisor_controller  
+python3 supervisor_controller.py --test
 
-## Contributing
+# Test training pipeline
+python3 train_rl.py --standalone
+```
 
-Feel free to extend this project with:
-- Additional scenarios (highway driving, parking lots, etc.)
-- Advanced neural network architectures
-- Multi-agent scenarios
-- Real-world sensor simulation improvements
+## 📖 Documentation
+
+- **[WEBOTS_INSTRUCTIONS.md](WEBOTS_INSTRUCTIONS.md)**: Complete setup guide
+- **[WEBOTS_SETUP_GUIDE.md](WEBOTS_SETUP_GUIDE.md)**: Installation details
+- **Inline comments**: Comprehensive code documentation
+
+## 🐛 Troubleshooting
+
+### Common Issues Fixed ✅
+
+❌ **Old Issue**: "Gym has been unmaintained since 2022"  
+✅ **Fixed**: Project now uses `gymnasium`
+
+❌ **Old Issue**: "Missing required packages: opencv-python"  
+✅ **Fixed**: Proper import detection (`cv2` vs `opencv-python`)
+
+❌ **Old Issue**: Dependency conflicts  
+✅ **Fixed**: Compatible version specifications
+
+### Getting Help
+
+1. Check **WEBOTS_INSTRUCTIONS.md** for detailed setup
+2. Verify dependencies: all packages should install without errors
+3. Test controllers: `python3 launch_simulation.py` should work
+4. For Webots issues: ensure version R2023a+ is installed
+
+## 🏆 Success Criteria
+
+Your setup works when:
+- ✅ `python3 launch_simulation.py` runs without dependency errors
+- ✅ Controllers pass test mode
+- ✅ Webots loads the world file (when installed)
+- ✅ Car responds to WASD controls
+- ✅ Training pipeline completes successfully
+
+## 🎯 Next Steps
+
+1. **Install Webots** from https://cyberbotics.com/
+2. **Run launcher**: `python3 launch_simulation.py`
+3. **Drive manually** for 10-15 minutes to collect data
+4. **Train AI model**: `python3 train_rl.py`
+5. **Test autonomous mode**: Switch to AI with 'M' key
+
+## 🤝 Contributing
+
+This project is ready for:
+- Adding new scenarios
+- Implementing different RL algorithms
+- Extending sensor capabilities
+- Creating custom world files
+
+---
+
+**🎉 Happy Autonomous Driving!** 🚗💨
+
+*No dependency errors. No gym warnings. Just working autonomous driving simulation.*

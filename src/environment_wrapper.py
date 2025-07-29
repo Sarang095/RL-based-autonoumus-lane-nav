@@ -8,7 +8,6 @@ import cv2
 from typing import Any, Dict, Tuple, Optional
 import random
 from gymnasium import spaces
-from gymnasium.wrappers import FrameStackObservation
 
 from .config import Config
 
@@ -79,43 +78,6 @@ class MultiAgentWrapper(gym.Wrapper):
         max_agents = self.multi_agent_config['max_agents']
         vehicles_count = random.randint(10, max_agents)
         config['vehicles_count'] = vehicles_count
-
-
-class VisionObservationWrapper(gym.ObservationWrapper):
-    """Wrapper to ensure consistent vision-based observations"""
-    
-    def __init__(self, env: gym.Env, observation_shape: Tuple[int, int] = (84, 84)):
-        super().__init__(env)
-        self.observation_shape = observation_shape
-        
-        # Update observation space
-        self.observation_space = spaces.Box(
-            low=0, high=255, 
-            shape=(*observation_shape, 1),  # Grayscale
-            dtype=np.uint8
-        )
-    
-    def observation(self, obs):
-        """Process observation to ensure consistent shape and format"""
-        # Handle different observation formats
-        if len(obs.shape) == 4:  # Already processed by frame stack
-            return obs
-        elif len(obs.shape) == 3 and obs.shape[-1] == 3:  # RGB image
-            # Convert to grayscale
-            obs = cv2.cvtColor(obs, cv2.COLOR_RGB2GRAY)
-        elif len(obs.shape) == 3 and obs.shape[-1] == 1:  # Already grayscale with channel
-            obs = obs.squeeze(-1)  # Remove channel dimension for processing
-        
-        # Resize to target shape if needed
-        if obs.shape[:2] != self.observation_shape:
-            obs = cv2.resize(obs, self.observation_shape)
-        
-        # Ensure uint8 and add channel dimension
-        obs = obs.astype(np.uint8)
-        if len(obs.shape) == 2:
-            obs = np.expand_dims(obs, axis=-1)
-        
-        return obs
 
 
 class RewardShapingWrapper(gym.Wrapper):
@@ -192,26 +154,10 @@ def create_environment(env_name: str = 'highway',
     # Get environment-specific config
     env_config = Config.get_env_config(env_name)
     
-    # Create environment with visual observations
-    env = gym.make(env_id, render_mode='rgb_array')
-    
-    # Configure for visual observations with stack_size = 1 (we'll handle stacking separately)
-    visual_config = {
-        'observation': {
-            'type': 'GrayscaleObservation',
-            'observation_shape': env_config['observation']['observation_shape'],
-            'stack_size': 1,  # Use 1 and handle stacking with wrapper
-            'weights': env_config['observation']['weights'],
-        },
-        'vehicles_count': env_config.get('vehicles_count', 50),
-        'duration': env_config.get('duration', 40),
-        'vehicles_density': env_config.get('vehicles_density', 1),
-        'action': env_config.get('action', {'type': 'ContinuousAction'}),
-    }
-    
-    # Apply configuration
-    if hasattr(env.unwrapped, 'configure'):
-        env.unwrapped.configure(visual_config)
+    # Create environment directly with the full configuration
+    # highway-env's gym.make can take a config dict directly
+    # This ensures the observation space is set up correctly from the start
+    env = gym.make(env_id, render_mode='rgb_array', config=env_config)
     
     # Apply wrappers in order
     if enable_reward_shaping:
@@ -223,10 +169,8 @@ def create_environment(env_name: str = 'highway',
     if enable_domain_randomization:
         env = DomainRandomizationWrapper(env, Config.DOMAIN_RANDOMIZATION)
     
-    # Frame stacking for temporal information
-    stack_size = env_config['observation']['stack_size']
-    if stack_size > 1:
-        env = FrameStackObservation(env, stack_size)
+    # Frame stacking is handled by GrayscaleObservation if stack_size > 1 in config
+    # So, no need for FrameStackObservation wrapper here.
     
     return env
 

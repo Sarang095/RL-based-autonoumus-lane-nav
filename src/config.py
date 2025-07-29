@@ -34,6 +34,7 @@ class Config:
                 'type': 'GrayscaleObservation',
                 'observation_shape': (84, 84),
                 'stack_size': 4,
+                'weights': [0.2989, 0.5870, 0.1140],  # RGB to grayscale conversion
             },
             'action': {'type': 'ContinuousAction'},
             'incoming_vehicle_destination': None,
@@ -45,6 +46,7 @@ class Config:
                 'type': 'GrayscaleObservation',
                 'observation_shape': (84, 84),
                 'stack_size': 4,
+                'weights': [0.2989, 0.5870, 0.1140],  # RGB to grayscale conversion
             },
             'action': {'type': 'ContinuousAction'},
             'vehicles_count': 10,

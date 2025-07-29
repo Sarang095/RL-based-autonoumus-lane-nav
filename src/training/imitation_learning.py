@@ -147,7 +147,7 @@ class ImitationLearner:
             num_batches += 1
             
             # Update progress bar
-            pbar.set_postfix({'loss': loss.item():.4f})
+            pbar.set_postfix({'loss': f'{loss.item():.4f}'})
             
             # Log to tensorboard
             if batch_idx % 100 == 0:

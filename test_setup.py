@@ -20,7 +20,9 @@ def test_environment():
         # Test reset and step
         obs, info = env.reset()
         print(f"✓ Environment reset successful")
-        print(f"  Observation shape: {obs.shape}")
+        expected_obs_shape = Config.get_observation_shape('highway')
+        print(f"  Observation shape: {obs.shape}, Expected: {expected_obs_shape}")
+        assert obs.shape == expected_obs_shape, f"Observation shape mismatch: {obs.shape} != {expected_obs_shape}"
         
         # Random action
         action = env.action_space.sample()

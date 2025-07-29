@@ -1,14 +1,13 @@
 #!/usr/bin/env python3
 """
 Launch script for Webots Autonomous Driving Simulation
-Provides an easy way to start the simulation with different configurations.
+Handles dependency checking, environment setup, and Webots launching.
 """
 
 import os
 import sys
 import subprocess
-import argparse
-import time
+import platform
 
 
 def find_webots_executable():
@@ -18,6 +17,9 @@ def find_webots_executable():
         "/opt/webots/webots", 
         "/Applications/Webots.app/Contents/MacOS/webots",
         "C:\\Program Files\\Cyberbotics\\Webots R2023a\\msys64\\mingw64\\bin\\webots.exe",
+        "C:\\Program Files\\Cyberbotics\\Webots R2023b\\msys64\\mingw64\\bin\\webots.exe",
+        "C:\\Program Files\\Cyberbotics\\Webots R2024a\\msys64\\mingw64\\bin\\webots.exe",
+        "/snap/webots/current/usr/bin/webots",  # Snap install
         "webots"  # Assume it's in PATH
     ]
     
@@ -27,7 +29,10 @@ def find_webots_executable():
     
     # Try to find in PATH
     try:
-        result = subprocess.run(["which", "webots"], capture_output=True, text=True)
+        if os.name == 'nt':  # Windows
+            result = subprocess.run(["where", "webots"], capture_output=True, text=True)
+        else:  # Unix-like
+            result = subprocess.run(["which", "webots"], capture_output=True, text=True)
         if result.returncode == 0:
             return result.stdout.strip()
     except:
@@ -38,16 +43,22 @@ def find_webots_executable():
 
 def check_dependencies():
     """Check if required Python dependencies are installed."""
-    required_packages = [
-        "numpy", "opencv-python", "gym", "stable-baselines3", 
-        "torch", "matplotlib", "tensorboard"
-    ]
+    # Package name -> import name mapping
+    package_imports = {
+        "numpy": "numpy",
+        "opencv-python": "cv2",
+        "gymnasium": "gymnasium", 
+        "stable-baselines3": "stable_baselines3",
+        "torch": "torch",
+        "matplotlib": "matplotlib",
+        "tensorboard": "tensorboard"
+    }
     
     missing_packages = []
     
-    for package in required_packages:
+    for package, import_name in package_imports.items():
         try:
-            __import__(package.replace("-", "_"))
+            __import__(import_name)
         except ImportError:
             missing_packages.append(package)
     
@@ -79,117 +90,146 @@ def setup_environment():
             print(f"Created directory: {directory}")
 
 
-def launch_webots(world_file="worlds/autonomous_driving.wbt", mode="normal"):
-    """Launch Webots with the specified world file."""
-    webots_exe = find_webots_executable()
+def print_webots_instructions():
+    """Print instructions for setting up and running with Webots."""
+    print("\n" + "="*60)
+    print("WEBOTS SETUP INSTRUCTIONS")
+    print("="*60)
+    print("\n1. INSTALL WEBOTS:")
     
-    if not webots_exe:
-        print("Error: Webots executable not found!")
-        print("Please install Webots or add it to your PATH")
-        print("Download from: https://cyberbotics.com/")
-        return False
+    system = platform.system()
+    if system == "Windows":
+        print("   - Download from: https://cyberbotics.com/")
+        print("   - Install to default location: C:\\Program Files\\Cyberbotics\\Webots R2024a\\")
+        print("   - Add to PATH or use full path to webots.exe")
+    elif system == "Darwin":  # macOS
+        print("   - Download from: https://cyberbotics.com/")
+        print("   - Install to /Applications/Webots.app/")
+    else:  # Linux
+        print("   Option A - Using Snap (recommended):")
+        print("   sudo snap install webots")
+        print("\n   Option B - Download .deb package:")
+        print("   - Download from: https://cyberbotics.com/")
+        print("   - sudo dpkg -i webots_R2024a_amd64.deb")
     
-    print(f"Found Webots at: {webots_exe}")
-    print(f"Launching world: {world_file}")
+    print("\n2. OPEN WEBOTS PROJECT:")
+    print("   - Start Webots application")
+    print("   - Open File > Open World...")
+    print("   - Navigate to this project folder")
+    print("   - Open: worlds/highway_drive.wbt")
     
-    # Prepare command
-    cmd = [webots_exe]
+    print("\n3. SET CONTROLLER PATHS:")
+    print("   - In Webots, ensure the controller path includes:")
+    print(f"   - {os.path.abspath('controllers')}")
+    print("   - Tools > Preferences > General > Projects > WEBOTS_PROJECT")
     
-    if mode == "fast":
-        cmd.append("--mode=fast")
-    elif mode == "batch":
-        cmd.extend(["--mode=batch", "--minimize"])
+    print("\n4. RUN SIMULATION:")
+    print("   - In Webots: Simulation > Run")
+    print("   - The car should start driving automatically")
+    print("   - Monitor training progress in training_logs/ folder")
     
-    cmd.append(world_file)
+    print("\n5. TRAINING AND EVALUATION:")
+    print("   - Run: python3 train_rl.py")
+    print("   - View results: python3 evaluate_model.py")
     
-    try:
-        print("Starting Webots...")
-        print("Command:", " ".join(cmd))
-        
-        # Start Webots
-        process = subprocess.Popen(cmd)
-        
-        print("\nWebots is starting up...")
-        print("Once Webots loads:")
-        print("1. The simulation should start automatically")
-        print("2. Use W/A/S/D keys to control the car manually")
-        print("3. Press 'M' to toggle between manual and AI mode")
-        print("4. Press 'Q' to quit the agent controller")
-        print("\nPress Ctrl+C to stop this script")
-        
-        # Wait for process to complete
-        process.wait()
-        
-    except KeyboardInterrupt:
-        print("\nStopping simulation...")
-        process.terminate()
-    except Exception as e:
-        print(f"Error launching Webots: {e}")
-        return False
-    
-    return True
+    print("\n" + "="*60)
 
 
-def start_training():
-    """Start the RL training process."""
-    print("Starting RL training...")
+def launch_simulation_mode():
+    """Launch in standalone mode for testing without Webots."""
+    print("\n" + "="*50)
+    print("STANDALONE MODE - Testing Controllers")
+    print("="*50)
     
-    try:
-        subprocess.run([sys.executable, "train_rl.py"], check=True)
-    except subprocess.CalledProcessError as e:
-        print(f"Training failed with error: {e}")
-        return False
-    except KeyboardInterrupt:
-        print("Training interrupted by user")
-        return False
+    print("\nThis mode allows you to test the controllers without Webots.")
+    print("Select an option:")
+    print("1. Test agent controller logic")
+    print("2. Test supervisor controller logic")
+    print("3. Train RL model with simulated data")
+    print("4. Exit")
     
-    return True
+    while True:
+        try:
+            choice = input("\nEnter your choice (1-4): ").strip()
+            
+            if choice == "1":
+                print("\nTesting agent controller...")
+                os.chdir("controllers/agent_driver")
+                subprocess.run([sys.executable, "agent_driver.py", "--test"], check=True)
+                break
+            elif choice == "2":
+                print("\nTesting supervisor controller...")
+                os.chdir("controllers/supervisor_controller") 
+                subprocess.run([sys.executable, "supervisor_controller.py", "--test"], check=True)
+                break
+            elif choice == "3":
+                print("\nStarting RL training with simulated environment...")
+                subprocess.run([sys.executable, "train_rl.py", "--standalone"], check=True)
+                break
+            elif choice == "4":
+                print("Exiting...")
+                sys.exit(0)
+            else:
+                print("Invalid choice. Please enter 1-4.")
+                
+        except KeyboardInterrupt:
+            print("\nExiting...")
+            sys.exit(0)
+        except subprocess.CalledProcessError as e:
+            print(f"Error running command: {e}")
+            break
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Launch Webots Autonomous Driving Simulation")
-    parser.add_argument("--mode", choices=["normal", "fast", "batch"], default="normal",
-                       help="Webots execution mode (default: normal)")
-    parser.add_argument("--world", default="worlds/autonomous_driving.wbt",
-                       help="World file to load (default: worlds/autonomous_driving.wbt)")
-    parser.add_argument("--train", action="store_true",
-                       help="Start RL training instead of simulation")
-    parser.add_argument("--check-deps", action="store_true",
-                       help="Check dependencies and exit")
-    parser.add_argument("--setup", action="store_true",
-                       help="Setup environment directories and exit")
-    
-    args = parser.parse_args()
-    
-    # Check dependencies if requested
-    if args.check_deps:
-        if check_dependencies():
-            print("All dependencies are installed!")
-        sys.exit(0)
-    
-    # Setup environment if requested
-    if args.setup:
-        setup_environment()
-        print("Environment setup complete!")
-        sys.exit(0)
+    """Main launch function."""
+    print("Webots Autonomous Driving Simulation Launcher")
+    print("============================================")
     
     # Check dependencies
-    print("Checking dependencies...")
+    print("\nChecking dependencies...")
     if not check_dependencies():
-        print("Please install missing dependencies before running the simulation.")
-        sys.exit(1)
+        print("\nPlease install missing dependencies before running the simulation.")
+        return
+    
+    print("✓ All dependencies are installed!")
     
     # Setup environment
-    print("Setting up environment...")
+    print("\nSetting up environment...")
     setup_environment()
+    print("✓ Environment setup complete!")
     
-    # Start training or simulation
-    if args.train:
-        if not start_training():
-            sys.exit(1)
+    # Check for Webots
+    webots_path = find_webots_executable()
+    
+    if webots_path:
+        print(f"✓ Found Webots at: {webots_path}")
+        
+        # Launch Webots with the world file
+        world_file = os.path.join(os.getcwd(), "worlds", "highway_drive.wbt")
+        if os.path.exists(world_file):
+            print(f"\nLaunching Webots simulation...")
+            print(f"World file: {world_file}")
+            try:
+                subprocess.run([webots_path, world_file], check=True)
+            except subprocess.CalledProcessError as e:
+                print(f"Error launching Webots: {e}")
+        else:
+            print(f"⚠ World file not found: {world_file}")
+            print("Please ensure the world file exists.")
+            
     else:
-        if not launch_webots(args.world, args.mode):
-            sys.exit(1)
+        print("⚠ Webots executable not found!")
+        print_webots_instructions()
+        
+        # Ask user if they want to run in standalone mode
+        print("\nWould you like to run in standalone mode to test the controllers?")
+        response = input("Enter 'y' for yes, or any other key to exit: ").lower()
+        
+        if response in ['y', 'yes']:
+            launch_simulation_mode()
+        else:
+            print("\nInstall Webots and run this script again.")
+            print("Visit: https://cyberbotics.com/")
 
 
 if __name__ == "__main__":

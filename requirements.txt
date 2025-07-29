@@ -1,8 +1,8 @@
 # Core dependencies for Webots autonomous driving project
-numpy>=1.21.0
+numpy>=1.21.0,<2.0.0
 opencv-python>=4.5.0
-gym>=0.21.0
-stable-baselines3>=1.6.0
+gymnasium>=0.28.0
+stable-baselines3>=2.0.0
 torch>=1.10.0
 matplotlib>=3.5.0
 tensorboard>=2.8.0

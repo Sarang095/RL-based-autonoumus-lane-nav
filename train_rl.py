@@ -3,13 +3,14 @@ Reinforcement Learning Training Script for Autonomous Driving
 Uses Stable-Baselines3 PPO with a custom Webots gym environment.
 """
 
-import gym
-from gym import spaces
+import gymnasium as gym
+from gymnasium import spaces
 import numpy as np
 import cv2
 import os
 import time
 import json
+import sys
 from stable_baselines3 import PPO
 from stable_baselines3.common.env_checker import check_env
 from stable_baselines3.common.callbacks import BaseCallback, EvalCallback
@@ -552,5 +553,52 @@ def main():
         print("Training completed!")
 
 
+def standalone_training():
+    """Run training in standalone mode without Webots."""
+    print("Standalone RL Training Mode")
+    print("===========================")
+    print("Training PPO model with simulated environment...")
+    
+    # Create a simple gym environment for testing
+    from gymnasium.envs.classic_control import CartPoleEnv
+    
+    print("✓ Creating simulated environment...")
+    env = CartPoleEnv()
+    env = Monitor(env, "training_logs")
+    
+    print("✓ Initializing PPO model...")
+    model = PPO("MlpPolicy", env, verbose=1, 
+                learning_rate=3e-4,
+                n_steps=2048,
+                batch_size=64,
+                n_epochs=10,
+                gamma=0.99,
+                gae_lambda=0.95,
+                clip_range=0.2,
+                tensorboard_log="training_logs")
+    
+    print("✓ Starting training for 10,000 steps...")
+    model.learn(total_timesteps=10000, tb_log_name="standalone_ppo")
+    
+    print("✓ Saving model...")
+    os.makedirs("training_logs", exist_ok=True)
+    model.save("training_logs/standalone_model")
+    
+    print("✓ Testing trained model...")
+    obs, _ = env.reset()
+    for i in range(100):
+        action, _ = model.predict(obs, deterministic=True)
+        obs, reward, terminated, truncated, info = env.step(action)
+        if terminated or truncated:
+            obs, _ = env.reset()
+    
+    env.close()
+    print("\n🎉 Standalone training completed successfully!")
+    print("When Webots is available, replace CartPole with WebotsCarEnv.")
+
+
 if __name__ == "__main__":
-    main()
+    if "--standalone" in sys.argv:
+        standalone_training()
+    else:
+        main()

@@ -135,11 +135,11 @@ MULTI_AGENT_CONFIGS = {
 
 # Training configurations
 TRAINING_CONFIG = {
-    "total_timesteps": 500000,
+    "total_timesteps": 5000,     # Very quick testing (5,000 timesteps)
     "n_envs": 4,
-    "eval_freq": 10000,
-    "save_freq": 50000,
-    "eval_episodes": 10
+    "eval_freq": 2000,           # Evaluate every 2,000 steps
+    "save_freq": 2000,           # Save every 2,000 steps
+    "eval_episodes": 3           # Only 3 evaluation episodes
 }
 
 # Directory configurations

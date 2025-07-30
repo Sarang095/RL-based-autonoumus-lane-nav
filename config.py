@@ -15,6 +15,7 @@ from src.environments.vision_wrapper import HighwayVisionEnv
 from src.environments.domain_randomizer import DomainRandomizer
 from src.environments.reward_shaper import RewardShaper
 from src.environments.multi_agent_wrapper import MultiAgentWrapper
+from src.models.ppo_policy import PPOVisionPolicy
 
 # Scenario configurations
 SCENARIOS = {
@@ -134,11 +135,11 @@ MULTI_AGENT_CONFIGS = {
 
 # Training configurations
 TRAINING_CONFIG = {
-    "total_timesteps": 500000,
+    "total_timesteps": 5000,     # Very quick testing (5,000 timesteps)
     "n_envs": 4,
-    "eval_freq": 10000,
-    "save_freq": 50000,
-    "eval_episodes": 10
+    "eval_freq": 2000,           # Evaluate every 2,000 steps
+    "save_freq": 2000,           # Save every 2,000 steps
+    "eval_episodes": 3           # Only 3 evaluation episodes
 }
 
 # Directory configurations
@@ -230,10 +231,17 @@ def create_ppo_model(env, scenario: str, tensorboard_log: str = None):
     Returns:
         Configured PPO model
     """
+    # Use CnnPolicy with normalize_images=False for multi-channel stacked frames
+    policy_kwargs = {
+        "normalize_images": False,
+        "features_extractor_kwargs": {"features_dim": 256}
+    }
+    
     return PPO(
         policy="CnnPolicy",
         env=env,
         tensorboard_log=tensorboard_log or f"logs/{scenario}_tensorboard/",
+        policy_kwargs=policy_kwargs,
         **PPO_CONFIG
     )
 

@@ -106,6 +106,23 @@ def collect_expert_demonstrations(num_episodes=200, save_path="data/expert_demon
     return observations, actions, auxiliary_data
 
 
+def validate_training_data(observations, actions, auxiliary_data):
+    """Validate and fix training data to ensure valid ranges."""
+    
+    # Validate actions are in valid range [0, 4] 
+    actions = [max(0, min(action, 4)) for action in actions]
+    
+    # Validate lane positions if they exist
+    if "lane_positions" in auxiliary_data:
+        lane_positions = auxiliary_data["lane_positions"]
+        auxiliary_data["lane_positions"] = [max(0, min(pos, 4)) for pos in lane_positions]
+        print(f"Validated {len(lane_positions)} lane positions, range: {min(auxiliary_data['lane_positions'])}-{max(auxiliary_data['lane_positions'])}")
+    
+    print(f"Validated {len(actions)} actions, range: {min(actions)}-{max(actions)}")
+    
+    return observations, actions, auxiliary_data
+
+
 def train_imitation_learning(
     observations, 
     actions, 
@@ -115,6 +132,9 @@ def train_imitation_learning(
 ):
     """Train the imitation learning model."""
     print("🧠 Training Imitation Learning Model...")
+    
+    # Validate training data first
+    observations, actions, auxiliary_data = validate_training_data(observations, actions, auxiliary_data)
     
     # Split data
     split_idx = int(0.8 * len(observations))
@@ -409,7 +429,7 @@ def main():
                     actions = [np.random.randint(0, 5) for _ in range(1000)]
                     auxiliary_data = {
                         "speeds": [np.random.uniform(0, 1) for _ in range(1000)],
-                        "lane_positions": [np.random.randint(0, 3) for _ in range(1000)]
+                        "lane_positions": [np.random.randint(0, 5) for _ in range(1000)]  # 5 lanes (0-4)
                     }
             
             il_trainer, il_metrics = train_imitation_learning(

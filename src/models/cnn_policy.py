@@ -280,10 +280,12 @@ class CNNPolicy(nn.Module):
             nn.Sigmoid()
         )
         
+        # Lane prediction head - highway-env can have more than 3 lanes
+        # Typical highway scenarios can have 4-5 lanes
         self.lane_head = nn.Sequential(
             nn.Linear(hidden_dim, hidden_dim // 4),
             nn.ReLU(),
-            nn.Linear(hidden_dim // 4, 3)  # Left, center, right lane
+            nn.Linear(hidden_dim // 4, 5)  # Support up to 5 lanes (0-4)
         )
         
     def forward(

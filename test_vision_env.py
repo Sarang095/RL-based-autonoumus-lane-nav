@@ -196,7 +196,7 @@ def test_data_collection():
         dummy_actions = [np.random.randint(0, 5) for _ in range(10)]
         dummy_auxiliary = {
             "speeds": [np.random.uniform(0, 1) for _ in range(10)],
-            "lane_positions": [np.random.randint(0, 3) for _ in range(10)]
+            "lane_positions": [np.random.randint(0, 5) for _ in range(10)]
         }
         
         dataset = DrivingDataset(
@@ -230,7 +230,7 @@ def test_training_setup():
     dummy_actions = np.random.randint(0, 5, num_samples).tolist()
     dummy_auxiliary = {
         "speeds": np.random.uniform(0, 1, num_samples).tolist(),
-        "lane_positions": np.random.randint(0, 3, num_samples).tolist()
+                    "lane_positions": np.random.randint(0, 5, num_samples).tolist()
     }
     
     # Create dataset

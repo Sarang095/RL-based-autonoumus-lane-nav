@@ -214,6 +214,8 @@ class ImitationTrainer:
                     speed = getattr(env.vehicle, 'speed', 0.0)
                     lane_id = getattr(env.vehicle, 'lane_index', [None, None, 0])[2]
                     episode_speeds.append(speed / 30.0)  # Normalize speed
+                    # Clip lane_id to valid range [0, 4] for 5-lane model
+                    lane_id = max(0, min(lane_id, 4)) if lane_id is not None else 0
                     episode_lanes.append(lane_id)
                 else:
                     episode_speeds.append(0.0)
@@ -250,7 +252,21 @@ class ImitationTrainer:
         """Load demonstrations from file."""
         with open(load_path, 'rb') as f:
             data = pickle.load(f)
-        return data["observations"], data["actions"], data["auxiliary_data"]
+        
+        observations = data["observations"]
+        actions = data["actions"]
+        auxiliary_data = data["auxiliary_data"]
+        
+        # Validate and fix lane positions if they exist
+        if "lane_positions" in auxiliary_data:
+            lane_positions = auxiliary_data["lane_positions"]
+            # Clip any out-of-range lane positions to valid range [0, 4]
+            auxiliary_data["lane_positions"] = [max(0, min(pos, 4)) for pos in lane_positions]
+            
+        # Validate actions are in valid range
+        actions = [max(0, min(action, 4)) for action in actions]
+        
+        return observations, actions, auxiliary_data
     
     def train(
         self,
@@ -377,6 +393,8 @@ class ImitationTrainer:
                     
                 if "lane_positions" in batch and "lane_pred" in outputs:
                     lane_targets = batch["lane_positions"].to(self.device).long()
+                    # Validate lane targets are within valid range [0, 4]
+                    lane_targets = torch.clamp(lane_targets, 0, 4)
                     lane_loss = self.action_criterion(outputs["lane_pred"], lane_targets.squeeze())
                     aux_loss += lane_loss
                     

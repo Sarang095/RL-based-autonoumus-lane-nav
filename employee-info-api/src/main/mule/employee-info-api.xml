@@ -1,0 +1,91 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<mule xmlns:db="http://www.mulesoft.org/schema/mule/db"
+      xmlns:http="http://www.mulesoft.org/schema/mule/http"
+      xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core"
+      xmlns="http://www.mulesoft.org/schema/mule/core"
+      xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+      xsi:schemaLocation="
+        http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+        http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd
+        http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd
+        http://www.mulesoft.org/schema/mule/db http://www.mulesoft.org/schema/mule/db/current/mule-db.xsd">
+
+    <!-- Load properties -->
+    <configuration-properties file="http.properties" />
+    <configuration-properties file="db-config.properties" />
+
+    <!-- HTTP Listener Config -->
+    <http:listener-config name="HTTP_Listener_config" doc:name="HTTP Listener config">
+        <http:listener-connection host="${http.host}" port="${http.port}" />
+    </http:listener-config>
+
+    <!-- Database Config (MySQL) -->
+    <db:config name="DB_Config" doc:name="Database Config">
+        <db:my-sql-connection host="${db.host}"
+                               port="${db.port}"
+                               user="${db.user}"
+                               password="${db.password}"
+                               database="${db.database}" />
+    </db:config>
+
+    <!-- Flow: GET /employees/{id} -->
+    <flow name="get-employee-by-id" doc:id="get-employee-by-id">
+        <http:listener doc:name="GET /employees/{id}" config-ref="HTTP_Listener_config" path="/employees/{id}">
+            <http:response statusCode="#[vars.httpStatus default 200]">
+                <http:headers><![CDATA[#[{
+                    'Content-Type': 'application/json'
+                }]]></http:headers>
+            </http:response>
+            <http:error-response statusCode="#[vars.httpStatus default 500]">
+                <http:headers><![CDATA[#[{
+                    'Content-Type': 'application/json'
+                }]]></http:headers>
+            </http:error-response>
+        </http:listener>
+
+        <set-variable doc:name="Capture employeeId" name="employeeId" value="#[attributes.uriParams.id]" />
+
+        <!-- Query the database for the employee by ID -->
+        <db:select doc:name="Select employee by ID" config-ref="DB_Config">
+            <db:sql><![CDATA[SELECT id, name, department, salary FROM employees WHERE id = :id]]></db:sql>
+            <db:input-parameters><![CDATA[#[{
+                id: vars.employeeId as Number
+            }]]]></db:input-parameters>
+        </db:select>
+
+        <!-- If not found, return 404; else transform to JSON -->
+        <choice doc:name="Check result">
+            <when expression="#[isEmpty(payload)]">
+                <set-variable doc:name="Set 404" name="httpStatus" value="404" />
+                <ee:transform doc:name="Not Found JSON">
+                    <ee:message>
+                        <ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{
+  message: "Employee not found",
+  id: vars.employeeId
+}]]></ee:set-payload>
+                    </ee:message>
+                </ee:transform>
+            </when>
+            <otherwise>
+                <ee:transform doc:name="Transform to JSON">
+                    <ee:message>
+                        <ee:set-payload><![CDATA[%dw 2.0
+output application/json
+var row = payload[0]
+---
+{
+  id: row.id as Number,
+  name: row.name as String,
+  department: row.department as String,
+  salary: row.salary as Number
+}]]></ee:set-payload>
+                    </ee:message>
+                </ee:transform>
+            </otherwise>
+        </choice>
+
+    </flow>
+</mule>
